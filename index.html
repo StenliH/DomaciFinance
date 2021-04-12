@@ -6,9 +6,19 @@
 </head>
 <body>
 
+    <div>
+        <input id="fileinput" type="file" onchange="main()" style="font-size: 1.5em;"/>
+    </div>
+
+    <div id="select-year-container">
+        <select id="years"></select>
+    </div>
+    
 
     <script type="text/javascript">
-        
+        window.onload = function() {
+            createSelectYear();
+        };
     </script>
 
 </body>
