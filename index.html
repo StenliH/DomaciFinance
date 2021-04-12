@@ -13,12 +13,32 @@
     <div id="select-year-container">
         <select id="years"></select>
     </div>
+
+    <div id="zustatky">
+        <h1>Zůstatky</h1>
+    </div>
+
+    <div id="cashflow">
+        <h1>Cashflow</h1>
+    </div>
+
+    <div id="vydaje">
+        <h1>Výdaje</h1>
+    </div>
     
 
     <script type="text/javascript">
         window.onload = function() {
-            createSelectYear();
+            let fileInput = document.getElementById("fileinput");
+            fileInput.onchange = processInput;
         };
+
+        function processInput() {
+            createOptionsForSelectYear();
+            createTable("zustatky", zustatkyTableStructure);
+        }
+
+
     </script>
 
 </body>
