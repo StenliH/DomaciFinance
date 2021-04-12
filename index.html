@@ -31,10 +31,10 @@
         window.onload = function() {
             let fileInput = document.getElementById("fileinput");
             fileInput.onchange = processInput;
+            createOptionsForSelectYear();
         };
 
         function processInput() {
-            createOptionsForSelectYear();
             createTable("zustatky", zustatkyTableStructure);
         }
 
