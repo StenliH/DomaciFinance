@@ -1,36 +1,74 @@
-﻿/**
- * Názvy sloupců z tabulky Zůstatky s funkcemi pro výpočet hodnot.
- */
-var zustatkyTableColumnsHeader = [
-    {label: 'Běžná spotřeba', value: getBeznaSpotreba},
-    // {label: 'Rezerva', value: ??},
-    // {label: 'Martin', value: ??},
-    // {label: 'Káťa', value: ??}
+﻿/** Názvy sloupců z tabulky Zůstatky s funkcemi pro výpočet hodnot. */
+var zustatkyTableColumnHeaders = [
+    {label: 'Běžná spotřeba', value: getBeznaSpotrebaCF},
+    {label: 'Rezerva', value: getRezervaCF},
+    {label: 'Martin', value: getMartinCF},
+    {label: 'Káťa', value: getKataCF}
 ];
 
-// TODO - odkomentovat a upravit
-/**
- * Názvy řádků z tabulky Cashflow s funkcemi pro výpočet hodnot.
- */
-var cashflowTableRowsHeader = [
-    {label: 'Běžná spotřeba', value: getBeznaSpotreba},
-    // {label: 'Rezerva', value: ??},
-    // {label: 'Martin', value: ??},
-    // {label: 'Káťa', value: ??},
-    // {label: 'Celkově', value: ??},
+/** Názvy řádků z tabulky Cashflow s funkcemi pro výpočet hodnot. */
+var cashflowTableRowHeaders = [
+    {label: 'Běžná spotřeba', value: getBeznaSpotrebaCF},
+    {label: 'Rezerva', value: getRezervaCF},
+    {label: 'Martin', value: getMartinCF},
+    {label: 'Káťa', value: getKataCF},
+    {label: 'Celkové CF', value: getCelkoveCF},
 ];
 
-// TODO - odkomentovat a upravit
-/**
- * Názvy řádků z tabulky Výdaje s funkcemi pro výpočet hodnot.
- */
-var vydajeTableRowsHeader = [
-    // {label: 'Jídlo a pití', value: ??},
-    // {label: 'Nákupy', value: ??},
-    // {label: 'Charita a dárky', value: ??}
+/** Názvy řádků z tabulky Výdaje s funkcemi pro výpočet hodnot. */
+var vydajeTableRowHeaders = [
+    {label: 'Jídlo a pití', value: getJidlo},
+    {label: 'Nákupy', value: getNakupy},
+    {label: 'Charita a dárky', value: getCharita}
 ];
 
-// pro select s roky vytvoří options (od roku 2020 po aktuální) a vybere letošek
+/** Sem se uloží všechny transakce ze zpracovaného vstupního souboru. */
+var allTransactions = [];
+
+
+//---------------------------------------------------------------
+
+
+/** Nastavení stránky bezprostředně po zobrazení. */
+function initialSetup() {
+    let fileInput = document.getElementById("fileinput");
+    fileInput.onchange = processInput;
+    createOptionsForSelectYear();
+}
+
+
+/** Zpracování vstupu a zobrazení tabulek s výsledky. (případně vymazání předchozích tabulek) */
+async function processInput() {
+    // zpracování textu ze souboru
+    let file = document.getElementById('fileinput').files[0];
+    let text = await file.text();
+    parseFile(text);
+
+    displayTables();
+    let yearSelect = document.getElementById("years");
+    yearSelect.onchange = displayTables;
+}
+
+
+/** Smaže všechny tabulky na stránce (reset před zobrazením nových tabulek). */
+function clearPage() {
+    let tables = document.getElementsByTagName("table");
+    while (tables[0]) {
+        tables[0].parentNode.removeChild(tables[0]);
+    }
+}
+
+
+/** Vygeneruje a zobrazí tabulky s hodnotami. */
+function displayTables() {
+    clearPage();
+    createZustatkyTable();
+    createMonthlyTableInContainer("cashflow", cashflowTableContent);
+    createMonthlyTableInContainer("vydaje", vydajeTableContent);
+}
+
+
+/** Pro select s roky vytvoří options (od roku 2020 po aktuální) a vybere letošek. */
 function createOptionsForSelectYear() {
     // add options and set actual
     var selectYear = document.getElementById("years");
@@ -45,43 +83,301 @@ function createOptionsForSelectYear() {
     selectYear.value = actualYear;
 }
 
+
+/** Vrací rok zvolený v selectu. */
+function getYear() {
+    return document.getElementById("years").value;
+}
+
+
 /**
- * vytvoří tabulku v příslušném containeru s danou vnitřní strukturou
- * @param {*} containerId 
- * @param {*} tableStructure 
+ * Vytvoří vnitřek tabulky Zůstatků.
+ * @param {*} table 
  */
-function createTable(containerId, tableStructure) {
+function createZustatkyTable() {
     let table = document.createElement("table");
-    tableStructure(table);
+    let headersRow = document.createElement("tr");
+    let valuesRow = document.createElement("tr");
+
+    zustatkyTableColumnHeaders.forEach(e => {
+        let tdHeader = document.createElement("th");
+        tdHeader.innerText = e.label;
+        headersRow.appendChild(tdHeader);
+
+        let tdValue = document.createElement("td");
+        tdValue.innerText = e.value(allTransactions);
+        valuesRow.appendChild(tdValue);
+    });
+
+    table.appendChild(headersRow);
+    table.appendChild(valuesRow);
+
+    // vložím tabulku do containeru
+    let parent = document.getElementById("zustatky");
+    parent.appendChild(table);
+}
+
+
+/**
+ * Vytvoří tabulku v příslušném containeru s danou vnitřní strukturou.
+ * @param {*} containerId ID parent elementu.
+ * @param {*} getTableContent Callback pro vygenerování obsahu tabulky.
+ */
+ function createMonthlyTableInContainer(containerId, getTableContent) {
+    let table = document.createElement("table");
+
+    // generování prvního řádku s popisky
+    let firstRow = document.createElement("tr");
+    firstRow.appendChild(getThWithValue("rok " + getYear()));
+    for (let i = 0; i < 12; i++) {
+        firstRow.appendChild(getThWithValue(i+1));
+    }
+    firstRow.appendChild(getThWithValue("Celkem"));
+    table.appendChild(firstRow);
+
+    // generování vnitřních buněk s daty
+    getTableContent(table);
 
     let parent = document.getElementById(containerId);
     parent.appendChild(table);
 }
 
 
-function zustatkyTableStructure(table) {
-    let headersRow = document.createElement("tr");
-    let valuesRow = document.createElement("tr");
+/** Pomocná metoda pro vytvoření header buňky s popiskem. */
+function getThWithValue(value) {
+    let th = document.createElement("th");
+    th.innerText = value;
+    return th;
+}
 
-    zustatkyTableColumnsHeader.forEach(e => {
-        let tdHeader = document.createElement("th");
-        tdHeader.innerText = e.label;
-        headersRow.appendChild(tdHeader);
 
-        let tdValue = document.createElement("td");
-        tdValue.innerText = e.value("ahoj");
-        valuesRow.appendChild(tdValue);
-    });
-    table.appendChild(headersRow);
-    table.appendChild(valuesRow);
+/** Vygeneruje obsah tabulky Cashflow. */
+function cashflowTableContent(table) {
+    cashflowTableRowHeaders.forEach(item => table.appendChild(getMonthlyRow(item)));
+}
+
+
+/** Vygeneruje obsah tabulky Výdaje. */
+function vydajeTableContent(table) {
+    vydajeTableRowHeaders.forEach(item => table.appendChild(getMonthlyRow(item)));
+}
+
+
+/**
+ * Vytvoří řádek tabulky s hodnotami pro každý měsíc.
+ * @param {object} item Objekt s popiskem řádku a callbackem pro výpočet hodnoty.
+ * @returns 
+ */
+function getMonthlyRow(item) {
+    // tr
+    let row = document.createElement("tr");
+
+    // th
+    let th = document.createElement("th");
+    th.innerText = item.label;
+    row.appendChild(th);
+
+    // 12 values
+    let celkoveZaRok = 0;
+    let year = getYear();
+    for (let month = 0; month < 12; month++) {
+        // get první den měsíce a první den dalšího měsíce
+        let dateMin = new Date(year, month, 1);
+        let dateMax = new Date(year, month, 1);
+        dateMax = new Date(dateMax.setMonth(dateMax.getMonth() + 1));
+
+        let monthlyTransactions = allTransactions.filter(function (x) {
+            return x.datum >= dateMin &&
+                x.datum < dateMax;
+        });
+
+        let castkaVMesici = item.value(monthlyTransactions);
+        appendTdWithValue(row, castkaVMesici);
+        celkoveZaRok += castkaVMesici;
+    }
+
+    appendTdWithValue(row, roundTwoPlaces(celkoveZaRok));
+
+    return row;
+}
+
+
+/**
+ * Vytvoří buňku s hodnotou a připojí ji k elementu.
+ * @param {*} parent Řádek tabulky, ke kterému bude připojena buňka.
+ * @param {*} value Hodnota vložená do buňky.
+ */
+function appendTdWithValue(parent, value) {
+    let td = document.createElement("td");
+    td.innerText = value;
+    parent.appendChild(td);
+}
+
+
+/**
+ * Vrací řádek s vytvořeným prvním sloupcem pro tabulku s měsíčním výkazem.
+ * @param {string} header 
+ * @returns element 'tr'
+ */
+function getRowWithFirstCol(header) {
+    let row = document.createElement("tr");
+    let th = document.createElement("th");
+    th.innerText = header;
+    row.appendChild(th);
+
+    return row;
+}
+
+
+/**
+ * Zpracuje vstupní soubor s daty a uloží do globální proměnné.
+ * @param {string} text Transakce v csv formátu, jak lezou z appky.
+ */
+function parseFile(text) {
+    let lines = text.split('"\n"');
+
+    // přeskočí se první řádek = záhlaví tabulky
+    for (let i = 1; i < lines.length; i++) {
+        let valuesFromLine = lines[i].split('","');
+
+        let transaction = {
+            typ: trimQuotes(valuesFromLine[0]),
+            datum: new Date(trimQuotes(valuesFromLine[1]).replace(" ", "T")),
+            cas: trimQuotes(valuesFromLine[2]),
+            nazev: trimQuotes(valuesFromLine[3]),
+            castka: parseFloat(trimQuotes(valuesFromLine[4]).replace(",", ".")),
+            mena: trimQuotes(valuesFromLine[5]),
+            smennyKurz: trimQuotes(valuesFromLine[6]),
+            skupinaKategorii: trimQuotes(valuesFromLine[7]),
+            kategorie: trimQuotes(valuesFromLine[8]),
+            ucet: trimQuotes(valuesFromLine[9]),
+            poznamky: trimQuotes(valuesFromLine[10]),
+            popisky: trimQuotes(valuesFromLine[11]),       // TODO - dořešit pro více popisků u jedné transakce
+            status: trimQuotes(valuesFromLine[12]),
+        }
+
+        allTransactions[i - 1] = transaction;
+    }
 }
 
 /**
- * Z daných transakcí vypočte běžnou spotřebu.
- * @param { array } transactions Pole všech relevantních transakcí.
- * @returns {number} běžná spotřeba
+ * Ořezání přebytečných znaků.
+ * @param {string} text 
+ * @returns {string} ořezaný text
  */
-function getBeznaSpotreba(transactions) {
-    // TODO - upravit tělo metody dle reality
-    return 50;
+function trimQuotes(text) {
+    return text.replace(/["']/g, "");
+}
+
+/**
+ * Sečte field 'castka' všech itemů v poli a výsledek zaokrouhlí na dvě desetinná místa.
+ * @param {*} transactions Pole transakcí.
+ * @returns {number}
+ */
+function sum(transactions) {
+    var transactionsSum = transactions.reduce((a, b) => a + (b['castka'] || 0), 0);
+
+    if (transactionsSum == undefined) { return 0; }
+    return roundTwoPlaces(transactionsSum);
+}
+
+/**
+ * Vrací input zaokrouhlený na dvě desetinná místa.
+ * @param {number} value 
+ * @returns {number}
+ */
+function roundTwoPlaces(value) {
+    return Math.round(value * 100) / 100;
+}
+
+
+/*_______________ Výpočty jednotlivých veličin _______________*/
+
+function getBeznaSpotrebaCF(transactions) {
+    var prijmy = transactions.filter(function (x) {
+        return x.typ === "Příjem" &&
+            x.skupinaKategorii === "Pravidelné" &&
+            x.popisky !== "Martin" &&
+            x.popisky !== "Káťa";
+    });
+
+    var vydaje = transactions.filter(function (x) {
+        return x.typ === 'Výdaj' &&
+            x.skupinaKategorii !== "Bydlení" &&
+            x.popisky !== 'Mimořádné' &&
+            x.popisky !== "Martin" &&
+            x.popisky !== "Káťa";
+    });
+
+    var beznaSpotreba = sum(prijmy) * 0.4 + sum(vydaje);
+
+    return Math.round(beznaSpotreba * 100) / 100;
+}
+
+function getMartinCF(transactions) {
+    var trans = transactions.filter(function (x) {
+        return x.popisky == "Martin";
+    });
+
+    return sum(trans);
+}
+
+function getKataCF(transactions) {
+    var trans = transactions.filter(function (x) {
+        return x.popisky == "Káťa";
+    });
+
+    return sum(trans);
+}
+
+function getRezervaCF(transactions) {
+    var prijmy = transactions.filter(function (x) {
+        return x.typ === "Příjem" &&
+            x.skupinaKategorii === "Pravidelné" &&
+            x.popisky === "Mimořádné";
+    });
+
+    var vydaje = transactions.filter(function (x) {
+        return x.typ === 'Výdaj' &&
+            x.popisky === "Mimořádné";
+    });
+
+    var beznaSpotreba = sum(prijmy) + sum(vydaje);
+
+    return Math.round(beznaSpotreba * 100) / 100;
+}
+
+function getJidlo(transactions) {
+    var jidlo = transactions.filter(function (x) {
+        return x.typ === 'Výdaj' &&
+            x.skupinaKategorii == "Jídlo a pití";
+    });
+
+    return sum(jidlo);
+}
+
+function getNakupy(transactions) {
+    var nakupy = transactions.filter(function (x) {
+        return x.typ === 'Výdaj' &&
+            x.skupinaKategorii == "Nákupy";
+    });
+
+    return sum(nakupy);
+}
+
+function getCelkoveCF(transactions) {
+    var cf = transactions.filter(function (x) {
+        return x.typ === "Příjem" || x.typ === "Výdaj";
+    });
+
+    return sum(cf);
+}
+
+function getCharita(transactions) {
+    var charita = transactions.filter(function (x) {
+        return x.typ === 'Výdaj' &&
+            x.skupinaKategorii == "Darování";
+    });
+
+    return sum(charita);
 }

@@ -3,6 +3,17 @@
 <head>
 <title>Domácí finance</title>
 <script type="text/javascript" src="domaci-finance.js"></script>
+<style>
+    table {
+    border-spacing:0;
+    border: 1px solid black;
+    }
+    table td, table th {
+    border: 1px solid black;
+    width: 80px;
+    text-align: center;
+    }
+</style>
 </head>
 <body>
 
@@ -15,7 +26,7 @@
     </div>
 
     <div id="zustatky">
-        <h1>Zůstatky</h1>
+        <h1>Zůstatky za celé období</h1>
     </div>
 
     <div id="cashflow">
@@ -29,15 +40,8 @@
 
     <script type="text/javascript">
         window.onload = function() {
-            let fileInput = document.getElementById("fileinput");
-            fileInput.onchange = processInput;
-            createOptionsForSelectYear();
+            initialSetup();
         };
-
-        function processInput() {
-            createTable("zustatky", zustatkyTableStructure);
-        }
-
 
     </script>
 
