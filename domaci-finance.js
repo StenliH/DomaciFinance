@@ -252,7 +252,7 @@ function parseFile(text) {
             kategorie: trimQuotes(valuesFromLine[8]),
             ucet: trimQuotes(valuesFromLine[9]),
             poznamky: trimQuotes(valuesFromLine[10]),
-            popisky: trimQuotes(valuesFromLine[11]),       // TODO - dořešit pro více popisků u jedné transakce
+            popisky: trimQuotes(valuesFromLine[11]),       // TODO #1 - dořešit zpracování pro více popisků u jedné transakce
             status: trimQuotes(valuesFromLine[12]),
         }
 
