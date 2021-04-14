@@ -3,7 +3,8 @@ var zustatkyTableColumnHeaders = [
     {label: 'Běžná spotřeba', value: getBeznaSpotrebaCF},
     {label: 'Rezerva', value: getRezervaCF},
     {label: 'Martin', value: getMartinCF},
-    {label: 'Káťa', value: getKataCF}
+    {label: 'Káťa', value: getKataCF},
+    {label: 'Cashflow celkem', value: getCelkoveCF}
 ];
 
 /** Názvy řádků z tabulky Cashflow s funkcemi pro výpočet hodnot. */
@@ -100,13 +101,8 @@ function createZustatkyTable() {
     let valuesRow = document.createElement("tr");
 
     zustatkyTableColumnHeaders.forEach(e => {
-        let tdHeader = document.createElement("th");
-        tdHeader.innerText = e.label;
-        headersRow.appendChild(tdHeader);
-
-        let tdValue = document.createElement("td");
-        tdValue.innerText = e.value(allTransactions);
-        valuesRow.appendChild(tdValue);
+        headersRow.appendChild(getThWithValue(e.label));
+        valuesRow.appendChild(getTdWithMoneyValue(e.value(allTransactions)));
     });
 
     table.appendChild(headersRow);
@@ -143,13 +139,27 @@ function createZustatkyTable() {
 }
 
 
-/** Pomocná metoda pro vytvoření header buňky s popiskem. */
+/** Pomocná metoda pro vytvoření header buňky s textem uvnitř. */
 function getThWithValue(value) {
     let th = document.createElement("th");
     th.innerText = value;
     return th;
 }
 
+/** Pomocná metoda pro vytvoření td buňky s číslem ve formátu měny. */
+ function getTdWithMoneyValue(value) {
+    let td = document.createElement("td");
+    td.innerText = value !== 0 ? formatter.format(value) : 0;
+    return td;
+}
+
+/** Formátování čísla jako měny, např. 12 326,20. */
+var formatter = new Intl.NumberFormat('cs', {
+    //style: 'currency',
+    //currency: 'CZK',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+});
 
 /** Vygeneruje obsah tabulky Cashflow. */
 function cashflowTableContent(table) {
@@ -192,25 +202,14 @@ function getMonthlyRow(item) {
         });
 
         let castkaVMesici = item.value(monthlyTransactions);
-        appendTdWithValue(row, castkaVMesici);
+        //appendTdWithValue(row, castkaVMesici);
+        row.appendChild(getTdWithMoneyValue(castkaVMesici));
         celkoveZaRok += castkaVMesici;
     }
 
-    appendTdWithValue(row, roundTwoPlaces(celkoveZaRok));
+    row.appendChild(getTdWithMoneyValue(roundTwoPlaces(celkoveZaRok)));
 
     return row;
-}
-
-
-/**
- * Vytvoří buňku s hodnotou a připojí ji k elementu.
- * @param {*} parent Řádek tabulky, ke kterému bude připojena buňka.
- * @param {*} value Hodnota vložená do buňky.
- */
-function appendTdWithValue(parent, value) {
-    let td = document.createElement("td");
-    td.innerText = value;
-    parent.appendChild(td);
 }
 
 
@@ -252,7 +251,7 @@ function parseFile(text) {
             kategorie: trimQuotes(valuesFromLine[8]),
             ucet: trimQuotes(valuesFromLine[9]),
             poznamky: trimQuotes(valuesFromLine[10]),
-            popisky: trimQuotes(valuesFromLine[11]),       // TODO #1 - dořešit zpracování pro více popisků u jedné transakce
+            popisky: getPopisky(trimQuotes(valuesFromLine[11])),       // TODO #1 - dořešit zpracování pro více popisků u jedné transakce
             status: trimQuotes(valuesFromLine[12]),
         }
 
@@ -267,6 +266,11 @@ function parseFile(text) {
  */
 function trimQuotes(text) {
     return text.replace(/["']/g, "");
+}
+
+function getPopisky(inputString){
+    let popiskySeparator = " ";
+    return inputString.split(popiskySeparator);
 }
 
 /**
@@ -297,16 +301,16 @@ function getBeznaSpotrebaCF(transactions) {
     var prijmy = transactions.filter(function (x) {
         return x.typ === "Příjem" &&
             x.skupinaKategorii === "Pravidelné" &&
-            x.popisky !== "Martin" &&
-            x.popisky !== "Káťa";
+            !x.popisky.includes("Martin") &&
+            !x.popisky.includes("Káťa");
     });
 
     var vydaje = transactions.filter(function (x) {
         return x.typ === 'Výdaj' &&
             x.skupinaKategorii !== "Bydlení" &&
-            x.popisky !== 'Mimořádné' &&
-            x.popisky !== "Martin" &&
-            x.popisky !== "Káťa";
+            !x.popisky.includes('Mimořádné') &&
+            !x.popisky.includes("Martin") &&
+            !x.popisky.includes("Káťa");
     });
 
     var beznaSpotreba = sum(prijmy) * 0.4 + sum(vydaje);
@@ -316,7 +320,7 @@ function getBeznaSpotrebaCF(transactions) {
 
 function getMartinCF(transactions) {
     var trans = transactions.filter(function (x) {
-        return x.popisky == "Martin";
+        return x.popisky.includes("Martin");
     });
 
     return sum(trans);
@@ -324,7 +328,7 @@ function getMartinCF(transactions) {
 
 function getKataCF(transactions) {
     var trans = transactions.filter(function (x) {
-        return x.popisky == "Káťa";
+        return x.popisky.includes("Káťa");
     });
 
     return sum(trans);
@@ -334,12 +338,12 @@ function getRezervaCF(transactions) {
     var prijmy = transactions.filter(function (x) {
         return x.typ === "Příjem" &&
             x.skupinaKategorii === "Pravidelné" &&
-            x.popisky === "Mimořádné";
+            x.popisky.includes("Mimořádné");
     });
 
     var vydaje = transactions.filter(function (x) {
         return x.typ === 'Výdaj' &&
-            x.popisky === "Mimořádné";
+            x.popisky.includes("Mimořádné");
     });
 
     var beznaSpotreba = sum(prijmy) + sum(vydaje);
