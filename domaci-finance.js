@@ -298,13 +298,13 @@ function roundTwoPlaces(value) {
 /*_______________ Výpočty jednotlivých veličin _______________*/
 
 function getBeznaSpotrebaCF(transactions) {
+    // všechny pravidelné příjmy
     var prijmy = transactions.filter(function (x) {
         return x.typ === "Příjem" &&
-            x.skupinaKategorii === "Pravidelné" &&
-            !x.popisky.includes("Martin") &&
-            !x.popisky.includes("Káťa");
+            x.skupinaKategorii === "Pravidelné";
     });
 
+    // všechny výdaje kromě bydlení, mimořádných a osobních
     var vydaje = transactions.filter(function (x) {
         return x.typ === 'Výdaj' &&
             x.skupinaKategorii !== "Bydlení" &&
@@ -312,8 +312,14 @@ function getBeznaSpotrebaCF(transactions) {
             !x.popisky.includes("Martin") &&
             !x.popisky.includes("Káťa");
     });
-
-    var beznaSpotreba = sum(prijmy) * 0.4 + sum(vydaje);
+    
+    // co jsme si vyplatili v daném měsíci do osobního (odečtu z výsledné běžné spotřeby)
+    var prevedenoDoOsobniho = transactions.filter(function (x) {
+        return x.typ === "Příjem" && x.skupinaKategorii === "Pravidelné" &&
+        (x.popisky.includes("Martin") || x.popisky.includes("Káťa"));
+    });
+    
+    var beznaSpotreba = sum(prijmy) * 0.4 + sum(vydaje) - sum(prevedenoDoOsobniho);
 
     return Math.round(beznaSpotreba * 100) / 100;
 }
