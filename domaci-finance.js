@@ -4,7 +4,7 @@ var zustatkyTableColumnHeaders = [
     {label: 'Rezerva', value: getRezervaCF},
     {label: 'Martin', value: getMartinCF},
     {label: 'Káťa', value: getKataCF},
-    {label: 'Cashflow celkem', value: getCelkoveCF}
+    {label: 'Cashflow celkem', value: getCelkoveCF},
 ];
 
 /** Názvy řádků z tabulky Cashflow s funkcemi pro výpočet hodnot. */
@@ -16,11 +16,20 @@ var cashflowTableRowHeaders = [
     {label: 'Celkové CF', value: getCelkoveCF},
 ];
 
+/** Názvy řádků z tabulky Příjmy s funkcemi pro výpočet hodnot. */
+var prijmyTableRowHeaders = [
+    {label: 'Pravidelné', value: getPravidelnePrijmy},
+    {label: 'Ostatní', value: getOstatniPrijmy},
+    {label: 'Celkové', value: getCelkovePrijmy},
+];
+
 /** Názvy řádků z tabulky Výdaje s funkcemi pro výpočet hodnot. */
 var vydajeTableRowHeaders = [
+    {label: 'Běžná spotřeba', value: getBeznaSpotrebaVydaje},
     {label: 'Jídlo a pití', value: getJidlo},
     {label: 'Nákupy', value: getNakupy},
-    {label: 'Charita a dárky', value: getCharita}
+    {label: 'Charita a dárky', value: getCharita},
+    {label: 'Celkem', value: getCelkoveVydaje},
 ];
 
 /** Sem se uloží všechny transakce ze zpracovaného vstupního souboru. */
@@ -64,8 +73,11 @@ function clearPage() {
 function displayTables() {
     clearPage();
     createZustatkyTable();
-    createMonthlyTableInContainer("cashflow", cashflowTableContent);
-    createMonthlyTableInContainer("vydaje", vydajeTableContent);
+    // createMonthlyTableInContainer("cashflow", cashflowTableContent);
+    // createMonthlyTableInContainer("vydaje", vydajeTableContent);
+    createMonthlyTableInContainer("cashflow", cashflowTableRowHeaders);
+    createMonthlyTableInContainer("prijmy", prijmyTableRowHeaders);
+    createMonthlyTableInContainer("vydaje", vydajeTableRowHeaders);
 }
 
 
@@ -119,7 +131,7 @@ function createZustatkyTable() {
  * @param {*} containerId ID parent elementu.
  * @param {*} getTableContent Callback pro vygenerování obsahu tabulky.
  */
- function createMonthlyTableInContainer(containerId, getTableContent) {
+ function createMonthlyTableInContainer(containerId, rows) {
     let table = document.createElement("table");
 
     // generování prvního řádku s popisky
@@ -132,7 +144,8 @@ function createZustatkyTable() {
     table.appendChild(firstRow);
 
     // generování vnitřních buněk s daty
-    getTableContent(table);
+    //getTableContent(table);
+    generateTableContent(table, rows);
 
     let parent = document.getElementById(containerId);
     parent.appendChild(table);
@@ -161,15 +174,20 @@ var formatter = new Intl.NumberFormat('cs', {
     maximumFractionDigits: 2,
 });
 
-/** Vygeneruje obsah tabulky Cashflow. */
-function cashflowTableContent(table) {
-    cashflowTableRowHeaders.forEach(item => table.appendChild(getMonthlyRow(item)));
-}
+// /** Vygeneruje obsah tabulky Cashflow. */
+// function cashflowTableContent(table) {
+//     cashflowTableRowHeaders.forEach(item => table.appendChild(getMonthlyRow(item)));
+// }
 
 
-/** Vygeneruje obsah tabulky Výdaje. */
-function vydajeTableContent(table) {
-    vydajeTableRowHeaders.forEach(item => table.appendChild(getMonthlyRow(item)));
+// /** Vygeneruje obsah tabulky Výdaje. */
+// function vydajeTableContent(table) {
+//     vydajeTableRowHeaders.forEach(item => table.appendChild(getMonthlyRow(item)));
+// }
+
+/** Vygeneruje obsah tabulky. */
+function generateTableContent(table, rows) {
+    rows.forEach(item => table.appendChild(getMonthlyRow(item)));
 }
 
 
@@ -390,4 +408,61 @@ function getCharita(transactions) {
     });
 
     return sum(charita);
+}
+
+function getBeznaSpotrebaVydaje(transactions) {
+    // všechny výdaje kromě bydlení, mimořádných a osobních
+    var vydaje = transactions.filter(function (x) {
+        return x.typ === 'Výdaj' &&
+            x.skupinaKategorii !== "Bydlení" &&
+            !x.popisky.includes('Mimořádné') &&
+            !x.popisky.includes("Martin") &&
+            !x.popisky.includes("Káťa");
+    });
+    
+    // co jsme si vyplatili v daném měsíci do osobního (odečtu z výsledné běžné spotřeby)
+    var prevedenoDoOsobniho = transactions.filter(function (x) {
+        return x.typ === "Příjem" && x.skupinaKategorii === "Pravidelné" &&
+        (x.popisky.includes("Martin") || x.popisky.includes("Káťa"));
+    });
+    
+    var beznaSpotreba = sum(vydaje) - sum(prevedenoDoOsobniho);
+
+    return Math.round(beznaSpotreba * 100) / 100;
+}
+
+function getCelkoveVydaje(transactions) {
+    var celkoveVydaje = transactions.filter(function (x) {
+        return x.typ === 'Výdaj';
+    });
+
+    return sum(celkoveVydaje);
+}
+
+// Funkce pro výpočet příjmů
+
+function getPravidelnePrijmy(transactions) {
+    var pravidelnePrijmy = transactions.filter(function (x) {
+        return x.typ === 'Příjem' &&
+        x.skupinaKategorii === "Pravidelné";
+    });
+
+    return sum(pravidelnePrijmy);
+}
+
+function getOstatniPrijmy(transactions) {
+    var ostatniPrijmy = transactions.filter(function (x) {
+        return x.typ === 'Příjem' &&
+        x.skupinaKategorii !== "Pravidelné";
+    });
+
+    return sum(ostatniPrijmy);
+}
+
+function getCelkovePrijmy(transactions) {
+    var celkovePrijmy = transactions.filter(function (x) {
+        return x.typ === 'Příjem';
+    });
+
+    return sum(celkovePrijmy);
 }
