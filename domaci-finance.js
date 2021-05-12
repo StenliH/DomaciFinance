@@ -32,6 +32,12 @@ var vydajeTableRowHeaders = [
     {label: 'Celkem', value: getCelkoveVydaje},
 ];
 
+var tabulky = [
+    {id: 'cashflow', value: cashflowTableRowHeaders},
+    {id: 'prijmy', value: prijmyTableRowHeaders},
+    {id: 'vydaje', value: vydajeTableRowHeaders},
+];
+
 /** Sem se uloží všechny transakce ze zpracovaného vstupního souboru. */
 var allTransactions = [];
 
@@ -73,11 +79,9 @@ function clearPage() {
 function displayTables() {
     clearPage();
     createZustatkyTable();
-    // createMonthlyTableInContainer("cashflow", cashflowTableContent);
-    // createMonthlyTableInContainer("vydaje", vydajeTableContent);
-    createMonthlyTableInContainer("cashflow", cashflowTableRowHeaders);
-    createMonthlyTableInContainer("prijmy", prijmyTableRowHeaders);
-    createMonthlyTableInContainer("vydaje", vydajeTableRowHeaders);
+    tabulky.forEach(t => {
+        createMonthlyTableInContainer(t.id, t.value);
+    });
 }
 
 
@@ -144,7 +148,6 @@ function createZustatkyTable() {
     table.appendChild(firstRow);
 
     // generování vnitřních buněk s daty
-    //getTableContent(table);
     generateTableContent(table, rows);
 
     let parent = document.getElementById(containerId);
@@ -173,17 +176,6 @@ var formatter = new Intl.NumberFormat('cs', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
 });
-
-// /** Vygeneruje obsah tabulky Cashflow. */
-// function cashflowTableContent(table) {
-//     cashflowTableRowHeaders.forEach(item => table.appendChild(getMonthlyRow(item)));
-// }
-
-
-// /** Vygeneruje obsah tabulky Výdaje. */
-// function vydajeTableContent(table) {
-//     vydajeTableRowHeaders.forEach(item => table.appendChild(getMonthlyRow(item)));
-// }
 
 /** Vygeneruje obsah tabulky. */
 function generateTableContent(table, rows) {
