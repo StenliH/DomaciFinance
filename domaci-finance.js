@@ -26,16 +26,27 @@ var prijmyTableRowHeaders = [
 /** Názvy řádků z tabulky Výdaje s funkcemi pro výpočet hodnot. */
 var vydajeTableRowHeaders = [
     {label: 'Běžná spotřeba', value: getBeznaSpotrebaVydaje},
-    {label: 'Jídlo a pití', value: getJidlo},
-    {label: 'Nákupy', value: getNakupy},
-    {label: 'Charita a dárky', value: getCharita},
+    {label: 'Bydlení', value: getBydleniVydaje},
+    {label: 'Rezerva', value: getRezervaVydaje},
     {label: 'Celkem', value: getCelkoveVydaje},
+];
+
+/** Názvy řádků z tabulky Běžná spotřeba s funkcemi pro výpočet hodnot. */
+var beznaSpotrebaTableRowHeaders = [
+    {label: 'Ke spotřebě', value: getBeznaSpotrebaPrijmy},
+    {label: 'Jídlo a pití', value: getJidloVydaje},
+    {label: 'Charita a dárky', value: getCharitaVydaje},
+    {label: 'Finanční výdaje', value: getFinancniVydaje},
+    {label: 'Ostatni', value: getOstatniVydajeBezneSpotreby},
+    {label: 'Do osobního', value: getPrevedenoDoOsobniho},
+    {label: 'Zbývá', value: getBeznaSpotrebaCF},
 ];
 
 var tabulky = [
     {id: 'cashflow', value: cashflowTableRowHeaders},
     {id: 'prijmy', value: prijmyTableRowHeaders},
     {id: 'vydaje', value: vydajeTableRowHeaders},
+    {id: 'bezna-spotreba', value: beznaSpotrebaTableRowHeaders},
 ];
 
 /** Sem se uloží všechny transakce ze zpracovaného vstupního souboru. */
@@ -334,6 +345,36 @@ function getBeznaSpotrebaCF(transactions) {
     return Math.round(beznaSpotreba * 100) / 100;
 }
 
+/** Kolik v daném měsíci můžeme ještě utratit za běžnou spotřebu. */
+function getBeznaSpotrebaPrijmy(transactions) {
+    // všechny pravidelné příjmy
+    var prijmy = transactions.filter(function (x) {
+        return x.typ === "Příjem" &&
+            x.skupinaKategorii === "Pravidelné";
+    });
+
+    // co jsme si vyplatili v daném měsíci do osobního (odečtu z výsledné běžné spotřeby)
+    // var prevedenoDoOsobniho = transactions.filter(function (x) {
+    //     return x.typ === "Příjem" && x.skupinaKategorii === "Pravidelné" &&
+    //     (x.popisky.includes("Martin") || x.popisky.includes("Káťa"));
+    // });
+    
+    // var beznaSpotreba = sum(prijmy) * 0.4 - sum(prevedenoDoOsobniho);
+    var beznaSpotreba = sum(prijmy) * 0.4;
+
+    return Math.round(beznaSpotreba * 100) / 100;
+}
+
+function getPrevedenoDoOsobniho(transactions) {
+    // co jsme si vyplatili v daném měsíci do osobního (odečtu z výsledné běžné spotřeby)
+    var prevedenoDoOsobniho = transactions.filter(function (x) {
+        return x.typ === "Příjem" && x.skupinaKategorii === "Pravidelné" &&
+        (x.popisky.includes("Martin") || x.popisky.includes("Káťa"));
+    });
+
+    return sum(prevedenoDoOsobniho);
+}
+
 function getMartinCF(transactions) {
     var trans = transactions.filter(function (x) {
         return x.popisky.includes("Martin");
@@ -367,7 +408,16 @@ function getRezervaCF(transactions) {
     return Math.round(beznaSpotreba * 100) / 100;
 }
 
-function getJidlo(transactions) {
+function getRezervaVydaje(transactions) {
+    var vydajeZRezervy = transactions.filter(function (x) {
+        return x.typ === 'Výdaj' &&
+            x.popisky.includes("Mimořádné");
+    });
+
+    return sum(vydajeZRezervy);
+}
+
+function getJidloVydaje(transactions) {
     var jidlo = transactions.filter(function (x) {
         return x.typ === 'Výdaj' &&
             x.skupinaKategorii == "Jídlo a pití";
@@ -393,13 +443,22 @@ function getCelkoveCF(transactions) {
     return sum(cf);
 }
 
-function getCharita(transactions) {
+function getCharitaVydaje(transactions) {
     var charita = transactions.filter(function (x) {
         return x.typ === 'Výdaj' &&
             x.skupinaKategorii == "Darování";
     });
 
     return sum(charita);
+}
+
+function getFinancniVydaje(transactions) {
+    var financniVydaje = transactions.filter(function (x) {
+        return x.typ === 'Výdaj' &&
+            x.skupinaKategorii == "Finanční výdaje";
+    });
+
+    return sum(financniVydaje);
 }
 
 function getBeznaSpotrebaVydaje(transactions) {
@@ -412,15 +471,29 @@ function getBeznaSpotrebaVydaje(transactions) {
             !x.popisky.includes("Káťa");
     });
     
-    // co jsme si vyplatili v daném měsíci do osobního (odečtu z výsledné běžné spotřeby)
-    var prevedenoDoOsobniho = transactions.filter(function (x) {
-        return x.typ === "Příjem" && x.skupinaKategorii === "Pravidelné" &&
-        (x.popisky.includes("Martin") || x.popisky.includes("Káťa"));
-    });
-    
-    var beznaSpotreba = sum(vydaje) - sum(prevedenoDoOsobniho);
+    var beznaSpotreba = sum(vydaje);
 
     return Math.round(beznaSpotreba * 100) / 100;
+}
+
+function getOstatniVydajeBezneSpotreby(transactions) {
+    var vydaje = getBeznaSpotrebaVydaje(transactions);
+    var jidlo = getJidloVydaje(transactions);
+    var charita = getCharitaVydaje(transactions);
+    var financni = getFinancniVydaje(transactions);
+
+    var ostatniVydaje = vydaje - jidlo - charita - financni;
+
+    return Math.round(ostatniVydaje * 100) / 100;
+}
+
+function getBydleniVydaje(transactions) {
+    var vydajeZaBydleni = transactions.filter(function (x) {
+        return x.typ === 'Výdaj' &&
+            x.skupinaKategorii === "Bydlení"
+    });
+
+    return sum(vydajeZaBydleni);
 }
 
 function getCelkoveVydaje(transactions) {
